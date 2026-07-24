@@ -484,19 +484,12 @@ try:
             prev_w = fw
             prev_y = fy
 
+        crate_x = prev_x + random.randint(10, max(20, prev_w - 40))
+        crate = Crate(crate_x, prev_y)
+        arrows.append(("up", crate_x + 16, prev_y - 20))
+
         top_y = prev_y - 90
-        door_x = random.randint(100, WIDTH - 130)
-        door = Crate(door_x, top_y)
-        top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
-
-        ol = max(top_plat.rect_obj.left, prev_x)
-        or_ = min(top_plat.rect_obj.right, prev_x + prev_w)
-        if ol >= or_:
-            center = (prev_x + prev_w // 2)
-            door_x = max(prev_x + 40, min(center, prev_x + prev_w - 70))
-            top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
-            door = Crate(door_x, top_y)
-
+        top_plat = Platform(20, top_y, WIDTH - 40, 14, BROWN)
         platforms.append(top_plat)
 
         ol2 = max(top_plat.rect_obj.left, prev_x)
@@ -510,11 +503,9 @@ try:
         ladders.append(Ladder(lx_final, top_y, prev_y - top_y))
         arrows.append(("up", lx_final + 12, prev_y - 10))
 
-        arrows.append(("up", door_x + 15, top_y - 20))
-
         log(f"Level {level_num}: {len(platforms)} platforms, {len(ladders)} ladders")
 
-        return platforms, ladders, coins, stars, spikes, door, arrows
+        return platforms, ladders, coins, stars, spikes, crate, arrows
 
 
     def draw_sky(surf):
@@ -565,7 +556,7 @@ try:
         score = 0
         particles = []
 
-        platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+        platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
         player = Player(40, HEIGHT - 80)
         frame = 0
         lc_timer = 0
@@ -582,11 +573,11 @@ try:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                             log("Game started")
                         elif state == "playing" and event.key == pygame.K_r:
-                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player.x = 40
                             player.y = HEIGHT - 80
                             player.vx = 0
@@ -596,13 +587,13 @@ try:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                         elif state == "win" and event.key == pygame.K_RETURN:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
 
                 if state == "menu":
@@ -722,7 +713,7 @@ try:
                     pygame.display.flip()
                     clock.tick(FPS)
                     if lc_timer <= 0:
-                        platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                        platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                         player.x = 40
                         player.y = HEIGHT - 80
                         player.vx = 0
@@ -756,8 +747,8 @@ try:
                             particles.append(Particle(s.x, s.y, ORANGE,
                                                       random.uniform(-3, 3), random.uniform(-4, -1), 30, 5))
 
-                door.update()
-                if player.rect().colliderect(door.rect()):
+                crate.update()
+                if player.rect().colliderect(crate.rect()):
                     score += 200
                     level += 1
                     log(f"Door reached! Next level: {level}")
@@ -796,7 +787,7 @@ try:
                     s.draw(screen)
                 for sp in spikes:
                     sp.draw(screen)
-                door.draw(screen)
+                crate.draw(screen)
 
                 pulse = frame * 0.08
                 for direction, ax, ay in arrows:
