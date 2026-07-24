@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 import os
+import math
 import traceback
 
 LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "game.log")
@@ -19,7 +20,6 @@ try:
 
     WIDTH, HEIGHT = 800, 600
     FPS = 60
-    TILE = 40
 
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Лесенки: Путь наверх")
@@ -38,9 +38,11 @@ try:
     GRAY = (180, 180, 180)
     DARK_GRAY = (120, 120, 120)
     ORANGE = (240, 150, 30)
-    PURPLE = (150, 60, 200)
     SKY_TOP = (20, 20, 60)
     SKY_BOT = (50, 80, 140)
+    ARROW_UP = (100, 255, 100)
+    ARROW_DOWN = (255, 180, 80)
+    ARROW_ALT = (150, 200, 255)
 
     font_small = pygame.font.SysFont("Arial", 20)
     font_med = pygame.font.SysFont("Arial", 32, bold=True)
@@ -249,22 +251,25 @@ try:
 
 
     class Ladder:
-        def __init__(self, x, y, h):
+        def __init__(self, x, y, h, is_alt=False):
             self.rect_obj = pygame.Rect(x, y, 24, h)
             self.x = x
             self.y = y
             self.h = h
+            self.is_alt = is_alt
 
         def rect(self):
             return self.rect_obj
 
         def draw(self, surf):
             x, y, h = self.x, self.y, self.h
-            pygame.draw.rect(surf, GRAY, (x, y, 4, h))
-            pygame.draw.rect(surf, GRAY, (x + 20, y, 4, h))
+            color = (150, 170, 200) if self.is_alt else GRAY
+            dark_color = (110, 130, 160) if self.is_alt else DARK_GRAY
+            pygame.draw.rect(surf, color, (x, y, 4, h))
+            pygame.draw.rect(surf, color, (x + 20, y, 4, h))
             for i in range(y + 5, y + h - 2, 14):
-                pygame.draw.rect(surf, GRAY, (x + 4, i, 16, 3))
-                pygame.draw.rect(surf, DARK_GRAY, (x + 4, i, 16, 3), 1)
+                pygame.draw.rect(surf, color, (x + 4, i, 16, 3))
+                pygame.draw.rect(surf, dark_color, (x + 4, i, 16, 3), 1)
 
 
     class Coin:
@@ -284,10 +289,10 @@ try:
         def draw(self, surf):
             if self.collected:
                 return
-            import math
             stretch = abs(int(self.r * abs(math.cos(self.anim))))
-            pygame.draw.ellipse(surf, YELLOW, (self.x - max(stretch, 3), self.y - self.r, max(stretch, 3) * 2, self.r * 2))
-            pygame.draw.ellipse(surf, ORANGE, (self.x - max(stretch, 3), self.y - self.r, max(stretch, 3) * 2, self.r * 2), 2)
+            s = max(stretch, 3)
+            pygame.draw.ellipse(surf, YELLOW, (self.x - s, self.y - self.r, s * 2, self.r * 2))
+            pygame.draw.ellipse(surf, ORANGE, (self.x - s, self.y - self.r, s * 2, self.r * 2), 2)
 
 
     class Star:
@@ -306,7 +311,6 @@ try:
         def draw(self, surf):
             if self.collected:
                 return
-            import math
             glow = int(3 * math.sin(self.anim))
             pts = []
             for i in range(5):
@@ -357,12 +361,48 @@ try:
             self.anim += 0.05
 
         def draw(self, surf):
-            import math
             r = self.rect()
             pygame.draw.rect(surf, DARK_BROWN, r)
             pygame.draw.rect(surf, BROWN, (r.x + 3, r.y + 3, r.w - 6, r.h - 6))
             glow = int(5 * math.sin(self.anim))
             pygame.draw.circle(surf, YELLOW, (r.right - 8, r.centery), max(1, 3 + glow))
+
+
+    def draw_arrow_up(surf, x, y, color, size=12, pulse=0):
+        s = size + int(2 * math.sin(pulse))
+        pts = [
+            (x, y - s),
+            (x - s // 2, y),
+            (x - s // 4, y),
+            (x - s // 4, y + s // 2),
+            (x + s // 4, y + s // 2),
+            (x + s // 4, y),
+            (x + s // 2, y),
+        ]
+        pygame.draw.polygon(surf, color, pts)
+        pygame.draw.polygon(surf, WHITE, pts, 1)
+
+
+    def draw_arrow_down(surf, x, y, color, size=12, pulse=0):
+        s = size + int(2 * math.sin(pulse))
+        pts = [
+            (x, y + s),
+            (x - s // 2, y),
+            (x - s // 4, y),
+            (x - s // 4, y - s // 2),
+            (x + s // 4, y - s // 2),
+            (x + s // 4, y),
+            (x + s // 2, y),
+        ]
+        pygame.draw.polygon(surf, color, pts)
+        pygame.draw.polygon(surf, WHITE, pts, 1)
+
+
+    def draw_arrow_hint(surf, x, y, direction, color, pulse):
+        if direction == "up":
+            draw_arrow_up(surf, x, y, color, 10, pulse)
+        else:
+            draw_arrow_down(surf, x, y, color, 10, pulse)
 
 
     def generate_level(level_num):
@@ -371,6 +411,7 @@ try:
         coins = []
         stars = []
         spikes = []
+        arrows = []
 
         prev_x = 0
         prev_w = WIDTH
@@ -381,23 +422,43 @@ try:
 
         for i in range(num_floors):
             fy = prev_y - 90
-            fw = random.randint(120, 260)
-
-            overlap_w = random.randint(40, min(prev_w, fw) - 10)
-            overlap_w = max(overlap_w, 30)
-            ox = random.randint(prev_x + 5, prev_x + prev_w - overlap_w - 5)
-            ox = max(ox, 20)
-            fx = random.randint(ox - fw + overlap_w, ox)
-            fx = max(20, min(fx, WIDTH - fw - 20))
+            fw = random.randint(140, 280)
+            fx = random.randint(20, WIDTH - fw - 20)
 
             platforms.append(Platform(fx, fy, fw, 14, DARK_GREEN if i % 2 == 0 else GREEN))
 
-            overlap_left = max(fx, prev_x)
-            overlap_right = min(fx + fw, prev_x + prev_w)
-            lx = random.randint(overlap_left + 5, overlap_right - 25)
+            ol = max(fx, prev_x)
+            or_ = min(fx + fw, prev_x + prev_w)
+
+            if ol < or_ - 20:
+                lx = random.randint(ol + 5, or_ - 25)
+            else:
+                mid = (prev_x + prev_w // 2 + fx + fw // 2) // 2
+                mid = max(fx + 15, min(mid, fx + fw - 25))
+                lx = mid
 
             ladder_h = prev_y - fy
             ladders.append(Ladder(lx, fy, ladder_h))
+            arrows.append(("up", lx + 12, prev_y - 10))
+
+            if level_num >= 2 and random.random() < 0.35 and i > 0:
+                alt_fx = random.randint(20, WIDTH - fw - 20)
+                alt_fw = random.randint(120, 200)
+                platforms.append(Platform(alt_fx, fy, alt_fw, 14, DARK_GREEN if i % 2 == 0 else GREEN))
+
+                aol = max(alt_fx, prev_x)
+                aor_ = min(alt_fx + alt_fw, prev_x + prev_w)
+                if aol < aor_ - 20:
+                    alx = random.randint(aol + 5, aor_ - 25)
+                else:
+                    alx = alt_fx + random.randint(10, max(10, alt_fw - 34))
+
+                ladders.append(Ladder(alx, fy, ladder_h, is_alt=True))
+                arrows.append(("up", alx + 12, prev_y - 10))
+
+                for _ in range(random.randint(1, 2)):
+                    cx = random.randint(alt_fx + 10, alt_fx + alt_fw - 10)
+                    coins.append(Coin(cx, fy - 16))
 
             for _ in range(random.randint(1, 3)):
                 cx = random.randint(fx + 10, fx + fw - 10)
@@ -422,9 +483,9 @@ try:
         door = ExitDoor(door_x, top_y)
         top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
 
-        overlap_left = max(top_plat.rect_obj.left, prev_x)
-        overlap_right = min(top_plat.rect_obj.right, prev_x + prev_w)
-        if overlap_left >= overlap_right:
+        ol = max(top_plat.rect_obj.left, prev_x)
+        or_ = min(top_plat.rect_obj.right, prev_x + prev_w)
+        if ol >= or_:
             door_x = max(prev_x + 10, min(door_x, prev_x + prev_w - 70))
             top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
             door = ExitDoor(door_x, top_y)
@@ -434,12 +495,13 @@ try:
         lx_final = random.randint(max(top_plat.rect_obj.left + 5, prev_x + 5),
                                    min(top_plat.rect_obj.right - 25, prev_x + prev_w - 25))
         ladders.append(Ladder(lx_final, top_y, prev_y - top_y))
+        arrows.append(("up", lx_final + 12, prev_y - 10))
 
-        log(f"Level {level_num}: {len(platforms)} platforms, {len(ladders)} ladders, {len(coins)} coins")
-        for i, lad in enumerate(ladders):
-            log(f"  Ladder {i}: x={lad.x}, y={lad.y}, h={lad.h}, rect={lad.rect()}")
+        arrows.append(("up", door_x + 15, top_y - 20))
 
-        return platforms, ladders, coins, stars, spikes, door
+        log(f"Level {level_num}: {len(platforms)} platforms, {len(ladders)} ladders")
+
+        return platforms, ladders, coins, stars, spikes, door, arrows
 
 
     def draw_sky(surf):
@@ -462,11 +524,13 @@ try:
         coins_text = font_small.render(f"Монеты: {player.coins}", True, YELLOW)
         stars_text = font_small.render(f"Звёзды: {player.stars}", True, ORANGE)
         level_text = font_small.render(f"Уровень: {level_num}", True, WHITE)
+        regen_text = font_small.render("R — новый уровень", True, GRAY)
 
         surf.blit(lives_text, (10, 10))
         surf.blit(coins_text, (10, 35))
         surf.blit(stars_text, (150, 10))
         surf.blit(level_text, (WIDTH - 130, 10))
+        surf.blit(regen_text, (WIDTH - 180, 35))
 
         for i in range(player.lives):
             pygame.draw.polygon(surf, RED, [
@@ -488,7 +552,7 @@ try:
         score = 0
         particles = []
 
-        platforms, ladders, coins, stars_list, spikes, door = generate_level(level)
+        platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
         player = Player(40, HEIGHT - 80)
         frame = 0
         lc_timer = 0
@@ -505,22 +569,27 @@ try:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                             log("Game started")
                         elif state == "playing" and event.key == pygame.K_r:
-                            state = "menu"
+                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
+                            player.x = 40
+                            player.y = HEIGHT - 80
+                            player.vx = 0
+                            player.vy = 0
+                            log("Level regenerated")
                         elif state == "gameover" and event.key == pygame.K_RETURN:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                         elif state == "win" and event.key == pygame.K_RETURN:
                             state = "playing"
                             level = 1
                             score = 0
-                            platforms, ladders, coins, stars_list, spikes, door = generate_level(level)
+                            platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
 
                 if state == "menu":
@@ -531,7 +600,7 @@ try:
                     sub = font_med.render("Путь наверх", True, WHITE)
                     hint = font_small.render("Нажми ENTER чтобы начать", True, GRAY)
                     controls = font_small.render("WASD / Стрелки — движение, SPACE — прыжок", True, GRAY)
-                    controls2 = font_small.render("W/S — подниматься по лесенке", True, GRAY)
+                    controls2 = font_small.render("W/S — лесенка, R — новый уровень", True, GRAY)
 
                     screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 160))
                     screen.blit(sub, (WIDTH // 2 - sub.get_width() // 2, 230))
@@ -580,7 +649,7 @@ try:
                     pygame.display.flip()
                     clock.tick(FPS)
                     if lc_timer <= 0:
-                        platforms, ladders, coins, stars_list, spikes, door = generate_level(level)
+                        platforms, ladders, coins, stars_list, spikes, door, arrows = generate_level(level)
                         player.x = 40
                         player.y = HEIGHT - 80
                         player.vx = 0
@@ -593,9 +662,6 @@ try:
                 if player.lives <= 0:
                     state = "gameover"
                     log("GAME OVER from fall")
-
-                if frame % 60 == 0:
-                    log(f"Frame {frame}: pos=({player.x:.0f},{player.y:.0f}) lives={player.lives} ground={player.on_ground} ladder={player.on_ladder} vx={player.vx:.1f} vy={player.vy:.1f}")
 
                 for c in coins:
                     c.update()
@@ -658,6 +724,12 @@ try:
                 for sp in spikes:
                     sp.draw(screen)
                 door.draw(screen)
+
+                pulse = frame * 0.08
+                for direction, ax, ay in arrows:
+                    color = ARROW_UP if direction == "up" else ARROW_DOWN
+                    draw_arrow_hint(screen, ax, ay, direction, color, pulse)
+
                 player.draw(screen)
 
                 for p in particles:
