@@ -181,7 +181,7 @@ try:
                         self.y = pr2.top - self.h
                         self.vy = 0
                         self.on_ground = True
-                    elif self.vy < 0:
+                    elif self.vy < 0 and not self.on_ladder:
                         self.y = pr2.bottom
                         self.vy = 0
                     pr = self.rect()
