@@ -452,10 +452,12 @@ try:
 
                 aol = max(alt_fx, prev_x)
                 aor_ = min(alt_fx + alt_fw, prev_x + prev_w)
-                if aol < aor_ - 20:
+                if aor_ - aol >= 30:
                     alx = random.randint(aol + 5, aor_ - 25)
+                elif aor_ > aol:
+                    alx = (aol + aor_) // 2
                 else:
-                    alx = alt_fx + random.randint(10, max(10, alt_fw - 34))
+                    alx = alt_fx + alt_fw // 2
 
                 ladders.append(Ladder(alx, fy, ladder_h, is_alt=True))
                 arrows.append(("up", alx + 12, prev_y - 10))
@@ -499,10 +501,12 @@ try:
 
         ol2 = max(top_plat.rect_obj.left, prev_x)
         or2 = min(top_plat.rect_obj.right, prev_x + prev_w)
-        if ol2 < or2 - 20:
+        if or2 - ol2 >= 30:
             lx_final = random.randint(ol2 + 5, or2 - 25)
-        else:
+        elif or2 > ol2:
             lx_final = (ol2 + or2) // 2
+        else:
+            lx_final = prev_x + prev_w // 2
         ladders.append(Ladder(lx_final, top_y, prev_y - top_y))
         arrows.append(("up", lx_final + 12, prev_y - 10))
 
@@ -624,12 +628,42 @@ try:
                 if state == "gameover":
                     draw_sky(screen)
                     draw_stars_bg(screen, bg_stars)
+
                     go = font_big.render("ИГРА ОКОНЧЕНА", True, RED)
                     sc = font_med.render(f"Счёт: {score}", True, YELLOW)
+                    coins_t = font_small.render(f"Монеты собраны: {player.coins}", True, ORANGE)
+                    stars_t = font_small.render(f"Звёзды собраны: {player.stars}", True, YELLOW)
+                    lvl_t = font_small.render(f"Уровень: {level}", True, WHITE)
+
+                    credits = [
+                        ("ЛЕСЕНКИ: Путь наверх", YELLOW, font_med),
+                        ("", WHITE, font_small),
+                        ("Разработка", GRAY, font_small),
+                        ("pop31", WHITE, font_med),
+                        ("", WHITE, font_small),
+                        ("Движок", GRAY, font_small),
+                        ("Pygame 2.6", LIGHT_BLUE, font_small),
+                        ("", WHITE, font_small),
+                        ("Спасибо за игру!", GREEN, font_med),
+                    ]
+
+                    y_off = (frame * 1.2) % (HEIGHT + len(credits) * 40 + 200)
+
+                    for i, (text, color, f) in enumerate(credits):
+                        cy = int(HEIGHT - y_off + i * 40 + 100)
+                        if -30 < cy < HEIGHT + 30:
+                            t = f.render(text, True, color)
+                            screen.blit(t, (WIDTH // 2 - t.get_width() // 2, cy))
+
+                    screen.blit(go, (WIDTH // 2 - go.get_width() // 2, 60))
+                    screen.blit(sc, (WIDTH // 2 - sc.get_width() // 2, 120))
+                    screen.blit(coins_t, (WIDTH // 2 - coins_t.get_width() // 2, 155))
+                    screen.blit(stars_t, (WIDTH // 2 - stars_t.get_width() // 2, 175))
+                    screen.blit(lvl_t, (WIDTH // 2 - lvl_t.get_width() // 2, 195))
+
                     hint = font_small.render("ENTER — заново", True, GRAY)
-                    screen.blit(go, (WIDTH // 2 - go.get_width() // 2, 200))
-                    screen.blit(sc, (WIDTH // 2 - sc.get_width() // 2, 280))
-                    screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, 350))
+                    screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 40))
+
                     pygame.display.flip()
                     clock.tick(FPS)
                     continue
@@ -637,12 +671,42 @@ try:
                 if state == "win":
                     draw_sky(screen)
                     draw_stars_bg(screen, bg_stars)
+
                     w = font_big.render("ПОБЕДА!", True, YELLOW)
-                    sc = font_med.render(f"Счёт: {score}", True, WHITE)
+                    sc = font_med.render(f"Итоговый счёт: {score}", True, WHITE)
+
+                    credits = [
+                        ("ЛЕСЕНКИ: Путь наверх", YELLOW, font_med),
+                        ("", WHITE, font_small),
+                        ("Ты прошёл все 11 уровней!", GREEN, font_med),
+                        ("", WHITE, font_small),
+                        (f"Монеты: {score // 10}", ORANGE, font_small),
+                        ("", WHITE, font_small),
+                        ("Разработка", GRAY, font_small),
+                        ("pop31", WHITE, font_med),
+                        ("", WHITE, font_small),
+                        ("Движок", GRAY, font_small),
+                        ("Pygame 2.6", LIGHT_BLUE, font_small),
+                        ("", WHITE, font_small),
+                        ("Спасибо за игру!", GREEN, font_med),
+                        ("", WHITE, font_small),
+                        ("THE END", GRAY, font_big),
+                    ]
+
+                    y_off = (frame * 1.0) % (HEIGHT + len(credits) * 40 + 200)
+
+                    for i, (text, color, f) in enumerate(credits):
+                        cy = int(HEIGHT - y_off + i * 40 + 100)
+                        if -30 < cy < HEIGHT + 30:
+                            t = f.render(text, True, color)
+                            screen.blit(t, (WIDTH // 2 - t.get_width() // 2, cy))
+
+                    screen.blit(w, (WIDTH // 2 - w.get_width() // 2, 40))
+                    screen.blit(sc, (WIDTH // 2 - sc.get_width() // 2, 110))
+
                     hint = font_small.render("ENTER — заново", True, GRAY)
-                    screen.blit(w, (WIDTH // 2 - w.get_width() // 2, 200))
-                    screen.blit(sc, (WIDTH // 2 - sc.get_width() // 2, 280))
-                    screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, 350))
+                    screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT - 40))
+
                     pygame.display.flip()
                     clock.tick(FPS)
                     continue
@@ -697,7 +761,7 @@ try:
                     score += 200
                     level += 1
                     log(f"Door reached! Next level: {level}")
-                    if level > 10:
+                    if level > 11:
                         state = "win"
                     else:
                         state = "level_complete"
