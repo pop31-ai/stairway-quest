@@ -382,16 +382,19 @@ try:
         for i in range(num_floors):
             fy = prev_y - 90
             fw = random.randint(120, 260)
-            fx = random.randint(20, WIDTH - fw - 20)
+
+            overlap_w = random.randint(40, min(prev_w, fw) - 10)
+            overlap_w = max(overlap_w, 30)
+            ox = random.randint(prev_x + 5, prev_x + prev_w - overlap_w - 5)
+            ox = max(ox, 20)
+            fx = random.randint(ox - fw + overlap_w, ox)
+            fx = max(20, min(fx, WIDTH - fw - 20))
 
             platforms.append(Platform(fx, fy, fw, 14, DARK_GREEN if i % 2 == 0 else GREEN))
 
             overlap_left = max(fx, prev_x)
             overlap_right = min(fx + fw, prev_x + prev_w)
-            if overlap_left < overlap_right - 30:
-                lx = random.randint(overlap_left + 5, overlap_right - 25)
-            else:
-                lx = fx + random.randint(10, max(10, fw - 34))
+            lx = random.randint(overlap_left + 5, overlap_right - 25)
 
             ladder_h = prev_y - fy
             ladders.append(Ladder(lx, fy, ladder_h))
@@ -417,7 +420,20 @@ try:
         top_y = prev_y - 90
         door_x = random.randint(100, WIDTH - 130)
         door = ExitDoor(door_x, top_y)
-        platforms.append(Platform(door_x - 40, top_y, 110, 14, BROWN))
+        top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
+
+        overlap_left = max(top_plat.rect_obj.left, prev_x)
+        overlap_right = min(top_plat.rect_obj.right, prev_x + prev_w)
+        if overlap_left >= overlap_right:
+            door_x = max(prev_x + 10, min(door_x, prev_x + prev_w - 70))
+            top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
+            door = ExitDoor(door_x, top_y)
+
+        platforms.append(top_plat)
+
+        lx_final = random.randint(max(top_plat.rect_obj.left + 5, prev_x + 5),
+                                   min(top_plat.rect_obj.right - 25, prev_x + prev_w - 25))
+        ladders.append(Ladder(lx_final, top_y, prev_y - top_y))
 
         log(f"Level {level_num}: {len(platforms)} platforms, {len(ladders)} ladders, {len(coins)} coins")
         for i, lad in enumerate(ladders):
