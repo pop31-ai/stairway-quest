@@ -346,26 +346,30 @@ try:
             pygame.draw.polygon(surf, (180, 30, 30), pts, 2)
 
 
-    class ExitDoor:
+    class Crate:
         def __init__(self, x, y):
             self.x = x
             self.y = y
-            self.w = 30
-            self.h = 40
+            self.w = 32
+            self.h = 32
             self.anim = 0
 
         def rect(self):
             return pygame.Rect(self.x, self.y - self.h, self.w, self.h)
 
         def update(self):
-            self.anim += 0.05
+            self.anim += 0.06
 
         def draw(self, surf):
+            import math
             r = self.rect()
-            pygame.draw.rect(surf, DARK_BROWN, r)
-            pygame.draw.rect(surf, BROWN, (r.x + 3, r.y + 3, r.w - 6, r.h - 6))
-            glow = int(5 * math.sin(self.anim))
-            pygame.draw.circle(surf, YELLOW, (r.right - 8, r.centery), max(1, 3 + glow))
+            pygame.draw.rect(surf, (160, 120, 50), r)
+            pygame.draw.rect(surf, (120, 85, 30), r, 2)
+            pygame.draw.line(surf, (120, 85, 30), (r.left, r.top), (r.right, r.bottom), 2)
+            pygame.draw.line(surf, (120, 85, 30), (r.right, r.top), (r.left, r.bottom), 2)
+            glow = int(4 * math.sin(self.anim))
+            pygame.draw.circle(surf, YELLOW, (r.centerx, r.centery), max(2, 5 + glow))
+            pygame.draw.circle(surf, ORANGE, (r.centerx, r.centery), max(2, 5 + glow), 2)
 
 
     def draw_arrow_up(surf, x, y, color, size=12, pulse=0):
@@ -480,20 +484,25 @@ try:
 
         top_y = prev_y - 90
         door_x = random.randint(100, WIDTH - 130)
-        door = ExitDoor(door_x, top_y)
+        door = Crate(door_x, top_y)
         top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
 
         ol = max(top_plat.rect_obj.left, prev_x)
         or_ = min(top_plat.rect_obj.right, prev_x + prev_w)
         if ol >= or_:
-            door_x = max(prev_x + 10, min(door_x, prev_x + prev_w - 70))
+            center = (prev_x + prev_w // 2)
+            door_x = max(prev_x + 40, min(center, prev_x + prev_w - 70))
             top_plat = Platform(door_x - 40, top_y, 110, 14, BROWN)
-            door = ExitDoor(door_x, top_y)
+            door = Crate(door_x, top_y)
 
         platforms.append(top_plat)
 
-        lx_final = random.randint(max(top_plat.rect_obj.left + 5, prev_x + 5),
-                                   min(top_plat.rect_obj.right - 25, prev_x + prev_w - 25))
+        ol2 = max(top_plat.rect_obj.left, prev_x)
+        or2 = min(top_plat.rect_obj.right, prev_x + prev_w)
+        if ol2 < or2 - 20:
+            lx_final = random.randint(ol2 + 5, or2 - 25)
+        else:
+            lx_final = (ol2 + or2) // 2
         ladders.append(Ladder(lx_final, top_y, prev_y - top_y))
         arrows.append(("up", lx_final + 12, prev_y - 10))
 
