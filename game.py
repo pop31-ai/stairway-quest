@@ -409,6 +409,14 @@ try:
             draw_arrow_down(surf, x, y, color, 10, pulse)
 
 
+    def safe_randint(a, b):
+        if a > b:
+            a, b = b, a
+        if a == b:
+            return a
+        return random.randint(a, b)
+
+
     def generate_level(level_num):
         platforms = []
         ladders = []
@@ -434,8 +442,8 @@ try:
             ol = max(fx, prev_x)
             or_ = min(fx + fw, prev_x + prev_w)
 
-            if ol < or_ - 20:
-                lx = random.randint(ol + 5, or_ - 25)
+            if or_ - ol >= 30:
+                lx = safe_randint(ol + 5, or_ - 25)
             else:
                 mid = (prev_x + prev_w // 2 + fx + fw // 2) // 2
                 mid = max(fx + 15, min(mid, fx + fw - 25))
@@ -453,7 +461,7 @@ try:
                 aol = max(alt_fx, prev_x)
                 aor_ = min(alt_fx + alt_fw, prev_x + prev_w)
                 if aor_ - aol >= 30:
-                    alx = random.randint(aol + 5, aor_ - 25)
+                    alx = safe_randint(aol + 5, aor_ - 25)
                 elif aor_ > aol:
                     alx = (aol + aor_) // 2
                 else:
@@ -484,7 +492,7 @@ try:
             prev_w = fw
             prev_y = fy
 
-        crate_x = prev_x + random.randint(10, max(20, prev_w - 40))
+        crate_x = prev_x + safe_randint(10, max(20, prev_w - 40))
         crate = Crate(crate_x, prev_y)
         arrows.append(("up", crate_x + 16, prev_y - 20))
 
@@ -495,7 +503,7 @@ try:
         ol2 = max(top_plat.rect_obj.left, prev_x)
         or2 = min(top_plat.rect_obj.right, prev_x + prev_w)
         if or2 - ol2 >= 30:
-            lx_final = random.randint(ol2 + 5, or2 - 25)
+            lx_final = safe_randint(ol2 + 5, or2 - 25)
         elif or2 > ol2:
             lx_final = (ol2 + or2) // 2
         else:
