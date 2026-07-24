@@ -557,12 +557,42 @@ try:
     bg_stars = [(random.randint(0, WIDTH), random.randint(0, HEIGHT)) for _ in range(80)]
 
 
+    def draw_player_offset(surf, player, oy):
+        if player.invincible > 0 and (player.invincible // 4) % 2 == 0:
+            return
+        x, y = int(player.x), int(player.y - oy)
+        if player.on_ladder:
+            leg_offset = int(player.climb_anim * 4) % 2
+            pygame.draw.rect(surf, BLUE, (x + 4, y + 12, 16, 14))
+            pygame.draw.rect(surf, LIGHT_BLUE, (x + 6, y + 14, 12, 10))
+            pygame.draw.circle(surf, (255, 210, 170), (x + 12, y + 6), 7)
+            pygame.draw.circle(surf, (50, 40, 30), (x + 12, y + 5), 6)
+            pygame.draw.rect(surf, DARK_BROWN, (x + 6 + leg_offset * 3, y + 26, 5, 6))
+            pygame.draw.rect(surf, DARK_BROWN, (x + 13 - leg_offset * 3, y + 26, 5, 6))
+        else:
+            walk = int(player.anim * 3) % 4
+            leg_offset = [0, 2, 0, -2][walk] if player.on_ground and abs(player.vx) > 0.5 else 0
+            pygame.draw.rect(surf, BLUE, (x + 4, y + 12, 16, 14))
+            pygame.draw.rect(surf, LIGHT_BLUE, (x + 6, y + 14, 12, 10))
+            pygame.draw.circle(surf, (255, 210, 170), (x + 12, y + 6), 7)
+            pygame.draw.circle(surf, (50, 40, 30), (x + 12, y + 5), 6)
+            eye_x = x + 12 + player.facing * 2
+            pygame.draw.circle(surf, WHITE, (eye_x, y + 5), 2)
+            pygame.draw.circle(surf, BLACK, (eye_x + player.facing, y + 5), 1)
+            pygame.draw.rect(surf, DARK_BROWN, (x + 8, y + 26, 4, 6 + leg_offset))
+            pygame.draw.rect(surf, DARK_BROWN, (x + 12, y + 26, 4, 6 - leg_offset))
+            arm_y = y + 16 + int(player.anim * 2) % 3
+            pygame.draw.rect(surf, (255, 210, 170), (x + 1, arm_y, 4, 8))
+            pygame.draw.rect(surf, (255, 210, 170), (x + 19, arm_y, 4, 8))
+
+
     def main():
         log("main() started")
         state = "menu"
         level = 1
         score = 0
         particles = []
+        cam_y = 0
 
         platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
         player = Player(40, HEIGHT - 80)
@@ -581,6 +611,7 @@ try:
                             state = "playing"
                             level = 1
                             score = 0
+                            cam_y = 0
                             platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                             log("Game started")
@@ -590,17 +621,20 @@ try:
                             player.y = HEIGHT - 80
                             player.vx = 0
                             player.vy = 0
+                            cam_y = 0
                             log("Level regenerated")
                         elif state == "gameover" and event.key == pygame.K_RETURN:
                             state = "playing"
                             level = 1
                             score = 0
+                            cam_y = 0
                             platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
                         elif state == "win" and event.key == pygame.K_RETURN:
                             state = "playing"
                             level = 1
                             score = 0
+                            cam_y = 0
                             platforms, ladders, coins, stars_list, spikes, crate, arrows = generate_level(level)
                             player = Player(40, HEIGHT - 80)
 
@@ -726,6 +760,7 @@ try:
                         player.y = HEIGHT - 80
                         player.vx = 0
                         player.vy = 0
+                        cam_y = 0
                         state = "playing"
                     continue
 
@@ -734,6 +769,11 @@ try:
                 if player.lives <= 0:
                     state = "gameover"
                     log("GAME OVER from fall")
+
+                target_cam = player.y - HEIGHT * 0.55
+                cam_y += (target_cam - cam_y) * 0.1
+                if cam_y > 0:
+                    cam_y = 0
 
                 for c in coins:
                     c.update()
@@ -759,7 +799,7 @@ try:
                 if player.rect().colliderect(crate.rect()):
                     score += 200
                     level += 1
-                    log(f"Door reached! Next level: {level}")
+                    log(f"Crate reached! Next level: {level}")
                     if level > 11:
                         state = "win"
                     else:
@@ -785,27 +825,77 @@ try:
                 draw_sky(screen)
                 draw_stars_bg(screen, bg_stars)
 
+                oy = int(cam_y)
+
                 for p in platforms:
-                    p.draw(screen)
+                    r = p.rect()
+                    pygame.draw.rect(screen, p.color, (r.x, r.y - oy, r.w, r.h))
+                    pygame.draw.rect(screen, DARK_BROWN, (r.x, r.y - oy, r.w, r.h), 2)
+                    for j in range(r.left + 8, r.right - 4, 16):
+                        pygame.draw.line(screen, DARK_BROWN, (j, r.top - oy + 4), (j + 8, r.top - oy + 4), 1)
+
                 for l in ladders:
-                    l.draw(screen)
+                    lx, ly, lh = l.x, l.y, l.h
+                    col = (150, 170, 200) if l.is_alt else GRAY
+                    dcol = (110, 130, 160) if l.is_alt else DARK_GRAY
+                    pygame.draw.rect(screen, col, (lx, ly - oy, 4, lh))
+                    pygame.draw.rect(screen, col, (lx + 20, ly - oy, 4, lh))
+                    for j in range(ly + 5, ly + lh - 2, 14):
+                        pygame.draw.rect(screen, col, (lx + 4, j - oy, 16, 3))
+                        pygame.draw.rect(screen, dcol, (lx + 4, j - oy, 16, 3), 1)
+
                 for c in coins:
-                    c.draw(screen)
+                    if not c.collected:
+                        stretch = abs(int(c.r * abs(math.cos(c.anim))))
+                        s = max(stretch, 3)
+                        pygame.draw.ellipse(screen, YELLOW, (c.x - s, c.y - oy - c.r, s * 2, c.r * 2))
+                        pygame.draw.ellipse(screen, ORANGE, (c.x - s, c.y - oy - c.r, s * 2, c.r * 2), 2)
+
                 for s in stars_list:
-                    s.draw(screen)
+                    if not s.collected:
+                        glow = int(3 * math.sin(s.anim))
+                        pts = []
+                        for i in range(5):
+                            angle = math.radians(-90 + i * 72)
+                            ox = math.cos(angle) * (10 + glow)
+                            oy2 = math.sin(angle) * (10 + glow)
+                            pts.append((s.x + ox, s.y - oy + oy2))
+                            angle2 = math.radians(-90 + i * 72 + 36)
+                            ox2 = math.cos(angle2) * (4 + glow // 2)
+                            oy3 = math.sin(angle2) * (4 + glow // 2)
+                            pts.append((s.x + ox2, s.y - oy + oy3))
+                        pygame.draw.polygon(screen, YELLOW, pts)
+                        pygame.draw.polygon(screen, ORANGE, pts, 2)
+
                 for sp in spikes:
-                    sp.draw(screen)
-                crate.draw(screen)
+                    r = sp.rect()
+                    pts = [
+                        (sp.x, sp.y - oy),
+                        (sp.x + sp.w // 2, sp.y - sp.h - oy),
+                        (sp.x + sp.w, sp.y - oy),
+                    ]
+                    pygame.draw.polygon(screen, RED, pts)
+                    pygame.draw.polygon(screen, (180, 30, 30), pts, 2)
+
+                cr = crate.rect()
+                pygame.draw.rect(screen, (160, 120, 50), (cr.x, cr.y - oy, cr.w, cr.h))
+                pygame.draw.rect(screen, (120, 85, 30), (cr.x, cr.y - oy, cr.w, cr.h), 2)
+                pygame.draw.line(screen, (120, 85, 30), (cr.x, cr.y - oy), (cr.x + cr.w, cr.y - oy + cr.h), 2)
+                pygame.draw.line(screen, (120, 85, 30), (cr.x + cr.w, cr.y - oy), (cr.x, cr.y - oy + cr.h), 2)
+                glow = int(4 * math.sin(crate.anim))
+                pygame.draw.circle(screen, YELLOW, (cr.centerx, cr.centery - oy), max(2, 5 + glow))
+                pygame.draw.circle(screen, ORANGE, (cr.centerx, cr.centery - oy), max(2, 5 + glow), 2)
 
                 pulse = frame * 0.08
                 for direction, ax, ay in arrows:
                     color = ARROW_UP if direction == "up" else ARROW_DOWN
-                    draw_arrow_hint(screen, ax, ay, direction, color, pulse)
+                    draw_arrow_hint(screen, ax, ay - oy, direction, color, pulse)
 
-                player.draw(screen)
+                draw_player_offset(screen, player, oy)
 
                 for p in particles:
-                    p.draw(screen)
+                    s = max(1, int(p.size * (p.life / p.max_life)))
+                    pygame.draw.rect(screen, p.color, (int(p.x), int(p.y - oy), s, s))
 
                 draw_hud(screen, player, level)
 
